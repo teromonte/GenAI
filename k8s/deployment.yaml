@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: newscenter-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: newscenter
+  template:
+    metadata:
+      labels:
+        app: newscenter
+    spec:
+      containers:
+      - name: newscenter-api
+        # This must match the name Docker Compose gave your image. 
+        # Based on your logs, it is: genai-newscenter-api
+        image: genai-newscenter-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: app-secrets
+        # We mount a volume so the DB persists (using hostPath for local dev)
+        volumeMounts:
+        - name: chroma-storage
+          mountPath: /app/chroma_db
+      volumes:
+      - name: chroma-storage
+        hostPath:
+          # ON WINDOWS DOCKER DESKTOP K8S:
+          # /run/desktop/mnt/host/c/... maps to C:\...
+          # Update 'YourUser' to your actual username
+          path: /run/desktop/mnt/host/c/Users/thiag/Desktop/DEVOPS/GenAI/chroma_db
+          type: Directory

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: newscenter-api
-        image: teromonte/newscenter-api:v1 
+        image: teromonte/newscenter-api:v2
         imagePullPolicy: Always # Uncomment this when testing cloud deployment
         ports:
         - containerPort: 8000

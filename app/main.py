@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.routers import chat
+from app.api.routers import chat, auth 
 
 # Create the FastAPI app instance
 app = FastAPI(
@@ -8,8 +8,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Include the chat router
-# All routes defined in chat.router will be added to the app
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(chat.router, prefix="/api", tags=["Chat"])
 
 @app.get("/", tags=["Root"])

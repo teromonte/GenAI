@@ -1,20 +1,30 @@
 services:
+  # 1. The API Service (Your App)
   newscenter-api:
-    # Build the image using the Dockerfile in the current directory
-    build: . 
-    
-    # Map port 8000 on your Windows machine to port 8000 inside the container
+    build: .
     ports:
       - "8000:8000"
-    
-    # Load environment variables from your .env file
-    # This passes your GROQ_API_KEY securely to the container
     env_file:
       - .env
-    
-    # Mount volumes (Shared Folders)
-    # 1. Persist the Vector Database:
-    #    Maps your local 'chroma_db' folder to '/app/chroma_db' inside the container.
-    #    This means the container uses the data you already ingested!
+    depends_on:
+      - db # Wait for the database to start before starting the API
     volumes:
+      - .:/app
       - ./chroma_db:/app/chroma_db
+
+  # 2. The Database Service (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432" # Expose port so you can check it with a GUI tool (DBeaver/pgAdmin)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+# Define the named volume for Postgres data persistence
+volumes:
+  postgres_data:

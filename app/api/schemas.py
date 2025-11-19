@@ -14,3 +14,23 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     source_documents: List[SourceDocument]
+
+from pydantic import EmailStr
+
+# --- Auth Schemas ---
+
+class UserBase(BaseModel):
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str
+
+class UserOut(UserBase):
+    id: int
+    
+    class Config:
+        from_attributes = True # Allows Pydantic to read SQLAlchemy models
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

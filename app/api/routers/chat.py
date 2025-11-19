@@ -1,27 +1,48 @@
-from fastapi import APIRouter, Depends # Import Depends
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
 from app.api.schemas import ChatRequest, ChatResponse, SourceDocument
-from app.services.rag_service import RAGService, get_rag_service # Import the class and the provider
+# Import Auth and DB dependencies
+from app.api.deps import get_current_user 
+from app.db.session import get_db
+# Import Models for saving history
+from app.db.models import User, ChatHistory
+# Import RAG Service and its Dependency Provider
+from app.services.rag_service import RAGService, get_rag_service 
 
 router = APIRouter()
 
-# Inject the service into the function arguments
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
-    request: ChatRequest, 
-    service: RAGService = Depends(get_rag_service) # <--- THIS IS DEPENDENCY INJECTION
+    request: ChatRequest,
+    # 1. SECURITY: Ensure user is logged in
+    current_user: User = Depends(get_current_user),
+    # 2. DATABASE: Get a session to save history
+    db: Session = Depends(get_db),
+    # 3. LOGIC: Get the RAG Service (using your existing DI)
+    service: RAGService = Depends(get_rag_service) 
 ):
     """
-    FastAPI will call get_rag_service(), take the result, 
-    and pass it to the 'service' variable.
+    Receives a question, processes it through the RAG pipeline,
+    saves the history to Postgres, and returns the answer.
     """
-    # Now we use the injected 'service' variable, not the global import
+    
+    # A. Get the AI result using the injected service
     result = service.ask_question(request.question)
+    answer_text = result.get("answer", "No answer found.")
     
-    # 2. Extract the raw LangChain documents
+    # B. Save the interaction to the Database
+    # We use 'current_user.id' to link this chat to the logged-in user
+    history_item = ChatHistory(
+        user_id=current_user.id,
+        question=request.question,
+        answer=answer_text
+    )
+    db.add(history_item)
+    db.commit() # This persists the data to Postgres
+    
+    # C. Convert Documents (as before)
     raw_documents = result.get("context", [])
-    
-    # 3. Convert LangChain Documents -> Pydantic SourceDocuments
-    # This is the step that was missing causing the ValidationError
     converted_documents = []
     for doc in raw_documents:
         converted_documents.append(
@@ -31,8 +52,8 @@ async def chat_endpoint(
             )
         )
 
-    # 4. Return the response matching the Schema
+    # D. Return response
     return ChatResponse(
-        answer=result.get("answer", "No answer found."),
+        answer=answer_text,
         source_documents=converted_documents
     )

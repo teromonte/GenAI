@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   newscenter-api:
     # Build the image using the Dockerfile in the current directory

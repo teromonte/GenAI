@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app /app/app
 # We also copy scripts in case we need to run ingestion inside the container
 COPY scripts /app/scripts
+# --- NEW: Copy Database Migration files ---
+COPY alembic /app/alembic
+COPY alembic.ini /app/alembic.ini
 
 # 6. Define the command to start the server
 # --host 0.0.0.0 is CRITICAL for Docker. It makes the server accessible outside the container.

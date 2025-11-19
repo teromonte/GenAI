@@ -63,6 +63,11 @@ resource "aws_instance" "genai_server" {
   
   security_groups = [aws_security_group.genai_sg.name]
 
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
   # 4. The Startup Script (User Data)
   # This runs ONCE when the server turns on.
   user_data = <<-EOF

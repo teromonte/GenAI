@@ -27,6 +27,9 @@ ENV/
 ##############
 .env
 *.pem
+k3s.yaml
+*.key
+
 
 ##############
 # DOCKER / DIST

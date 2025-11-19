@@ -10,15 +10,15 @@ class RAGService:
         self.llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
         # 2. Get retrievers for each news source
-        self.africa_retriever = get_retriever("africa_news")
+        self.brazil_retriever = get_retriever("brazil_news")
         self.europe_retriever = get_retriever("europe_news")
 
         # 3. Define the prompt for the "router"
         self.router_prompt_template = """
-        Your job is to classify the user's question into one of two categories based on geography: Africa or Europe.
+        Your job is to classify the user's question into one of two categories based on geography: Brazil or Europe.
         Do not answer the question. Only provide the single word category name.
 
-        Categories: africa, europe
+        Categories: brazil, europe
 
         User Question: {question}
         Category:
@@ -52,12 +52,12 @@ class RAGService:
         
         print(f"--- Routing decision: {route} ---")
 
-        if "africa" in route.lower():
-            return self.africa_retriever
+        if "brazil" in route.lower():
+            return self.brazil_retriever
         elif "europe" in route.lower():
             return self.europe_retriever
         else:
-            return self.africa_retriever
+            return self.brazil_retriever
 
     def ask_question(self, question: str) -> dict:
         """

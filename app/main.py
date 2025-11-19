@@ -4,7 +4,7 @@ from app.api.routers import chat, auth
 # Create the FastAPI app instance
 app = FastAPI(
     title="NewsBot RAG API",
-    description="An API for chatting with recent news from Africa and Europe.",
+    description="An API for chatting with recent news from Brazil and Europe.",
     version="1.0.0"
 )
 

@@ -1,18 +1,21 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends # Import Depends
 from app.api.schemas import ChatRequest, ChatResponse, SourceDocument
-from app.services.rag_service import rag_service
+from app.services.rag_service import RAGService, get_rag_service # Import the class and the provider
 
-# Create a new router
 router = APIRouter()
 
+# Inject the service into the function arguments
 @router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+async def chat_endpoint(
+    request: ChatRequest, 
+    service: RAGService = Depends(get_rag_service) # <--- THIS IS DEPENDENCY INJECTION
+):
     """
-    Receives a question, processes it through the RAG pipeline,
-    and returns the answer along with source documents.
+    FastAPI will call get_rag_service(), take the result, 
+    and pass it to the 'service' variable.
     """
-    # 1. Call the service (this works now!)
-    result = rag_service.ask_question(request.question)
+    # Now we use the injected 'service' variable, not the global import
+    result = service.ask_question(request.question)
     
     # 2. Extract the raw LangChain documents
     raw_documents = result.get("context", [])

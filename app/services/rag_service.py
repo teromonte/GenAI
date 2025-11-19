@@ -95,5 +95,8 @@ class RAGService:
         result = full_rag_chain.invoke({"question": question})
         return result
 
-# Create a single instance to be used by the API
-rag_service = RAGService()
+from functools import lru_cache
+
+@lru_cache()
+def get_rag_service() -> RAGService:
+    return RAGService()

@@ -74,7 +74,9 @@ class RAGService:
         )
         
         # Invoke the chain asynchronously
+        print(f"[DEBUG] About to invoke LangChain RAG chain for question: {question}")
         result = await full_rag_chain.ainvoke({"question": question})
+        print(f"[DEBUG] LangChain RAG chain completed. Result keys: {result.keys()}")
         return result
 
 from functools import lru_cache

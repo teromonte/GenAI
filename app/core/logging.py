@@ -40,7 +40,7 @@ def setup_logging():
     root_logger.handlers = [handler]
     root_logger.setLevel(logging.INFO)
 
-    # Silence noisy libraries
-    logging.getLogger("uvicorn.access").handlers = []  # Remove default uvicorn access logger to avoid duplicate/non-json logs
-    logging.getLogger("uvicorn.error").handlers = []
-    logging.getLogger("uvicorn").handlers = []
+    # Configure uvicorn loggers to use our handler
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Reduce noise but don't silence
+    logging.getLogger("uvicorn.error").setLevel(logging.INFO)
+    logging.getLogger("uvicorn").setLevel(logging.INFO)

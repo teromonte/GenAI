@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     LANGCHAIN_TRACING_V2: str = "true"
     LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
     LANGCHAIN_API_KEY: str = ""
+    LANGSMITH_API_KEY: str = ""
     LANGCHAIN_PROJECT: str = "newsbot-rag"
 
     @property

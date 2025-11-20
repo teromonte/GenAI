@@ -1,19 +1,38 @@
 from fastapi import FastAPI, Request
 from app.api.routers import chat, auth
 from app.core.logging import setup_logging
+from app.core.config import settings
 import structlog
 import time
 import uuid
+import os
 
 # Setup structured logging
 setup_logging()
 logger = structlog.get_logger()
 
+# Explicitly set LangChain environment variables for tracing
+# LangChain reads these directly from os.environ, not from Pydantic settings
+# CRITICAL: LangSmith needs LANGSMITH_API_KEY, not LANGCHAIN_API_KEY
+os.environ["LANGCHAIN_TRACING_V2"] = settings.LANGCHAIN_TRACING_V2
+os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGCHAIN_ENDPOINT
+os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY 
+os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
+
+logger.info(
+    "langsmith_configured",
+    project=settings.LANGCHAIN_PROJECT,
+    tracing_enabled=settings.LANGCHAIN_TRACING_V2,
+    endpoint=settings.LANGCHAIN_ENDPOINT,
+    api_key_set=bool(settings.LANGSMITH_API_KEY),
+    api_key_length=len(settings.LANGSMITH_API_KEY) if settings.LANGSMITH_API_KEY else 0
+)
+
 # Create the FastAPI app instance
 app = FastAPI(
     title="NewsBot RAG API",
     description="An API for chatting with recent news from Brazil and Europe.",
-    version="1.0.0"
+    version="1.0.1"
 )
 
 @app.middleware("http")

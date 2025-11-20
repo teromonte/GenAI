@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: newscenter-api
-          image: teromonte/newscenter-api:v4
+          image: teromonte/newscenter-api:v12
           imagePullPolicy: Always # Uncomment this when testing cloud deployment
           ports:
             - containerPort: 8000
@@ -22,11 +22,13 @@ spec:
             - secretRef:
                 name: app-secrets
           env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
             - name: LANGCHAIN_TRACING_V2
               value: "true"
             - name: LANGCHAIN_ENDPOINT
               value: "https://api.smith.langchain.com"
-            - name: LANGCHAIN_API_KEY
+            - name: LANGSMITH_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: app-secrets

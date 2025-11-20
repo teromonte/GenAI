@@ -36,7 +36,7 @@ logger.info(
 app = FastAPI(
     title="NewsBot RAG API",
     description="An API for chatting with recent news from Brazil and Europe.",
-    version="1.0.1"
+    version="1.0.2"
 )
 
 @app.middleware("http")

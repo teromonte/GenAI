@@ -82,6 +82,29 @@ class RAGService:
         print(f"[DEBUG] LangChain RAG chain completed. Result keys: {result.keys()}")
         return result
 
+    @traceable(project_name="newsbot-rag")
+    async def ask_question_stream(self, question: str):
+        """
+        Streams the answer for the given question.
+        Yields chunks of the answer.
+        """
+        # 1. Retrieve context
+        retriever = await self.decide_retriever({"question": question})
+        docs = await retriever.ainvoke(question)
+        
+        # 2. Prepare input for generation
+        input_data = {"context": docs, "question": question}
+        
+        # 3. Stream answer
+        generation_chain = (
+            self.final_prompt
+            | self.llm
+            | StrOutputParser()
+        )
+        
+        async for chunk in generation_chain.astream(input_data):
+            yield chunk, docs
+
 from functools import lru_cache
 
 @lru_cache()

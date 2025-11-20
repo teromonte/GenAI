@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 import structlog
@@ -65,3 +66,37 @@ async def chat_endpoint(
     except Exception as e:
         logger.error("chat_endpoint_error", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.post("/chat/stream")
+async def chat_stream_endpoint(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    service: RAGService = Depends(get_rag_service)
+):
+    async def generate():
+        full_answer = ""
+        docs = []
+        try:
+            async for chunk, retrieved_docs in service.ask_question_stream(request.question):
+                if retrieved_docs:
+                    docs = retrieved_docs
+                if chunk:
+                    full_answer += chunk
+                    yield chunk
+            
+            # Save history after streaming is done
+            history_item = ChatHistory(
+                user_id=current_user.id,
+                question=request.question,
+                answer=full_answer,
+                timestamp=datetime.utcnow()
+            )
+            db.add(history_item)
+            db.commit()
+            
+        except Exception as e:
+            logger.error("stream_error", error=str(e))
+            yield f"Error: {str(e)}"
+
+    return StreamingResponse(generate(), media_type="text/plain")

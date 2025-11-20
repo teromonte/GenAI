@@ -22,6 +22,7 @@ if "LANGCHAIN_API_KEY" not in os.environ and settings.LANGSMITH_API_KEY:
     os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY
 
 os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
+os.environ["LANGSMITH_PROJECT"] = settings.LANGCHAIN_PROJECT
 
 logger.info(
     "langsmith_configured",

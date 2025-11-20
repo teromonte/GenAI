@@ -6,6 +6,14 @@ from app.api.schemas import ChatRequest, ChatResponse, SourceDocument
 from app.api.deps import get_current_user 
 from app.db.session import get_db
 # Import Models for saving history
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.api.schemas import ChatRequest, ChatResponse, SourceDocument
+# Import Auth and DB dependencies
+from app.api.deps import get_current_user 
+from app.db.session import get_db
+# Import Models for saving history
 from app.db.models import User, ChatHistory
 # Import RAG Service and its Dependency Provider
 from app.services.rag_service import RAGService, get_rag_service 
@@ -28,7 +36,7 @@ async def chat_endpoint(
     """
     
     # A. Get the AI result using the injected service
-    result = service.ask_question(request.question)
+    result = await service.ask_question(request.question)
     answer_text = result.get("answer", "No answer found.")
     
     # B. Save the interaction to the Database

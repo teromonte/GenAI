@@ -14,10 +14,9 @@ load_dotenv()
 CHROMA_PATH = os.getenv("CHROMA_PATH", "chroma_db")
 EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
 
-RSS_FEEDS = [
-    {"name": "brazil_news", "url": "https://www.nytimes.com/svc/collections/v1/publish/https://www.nytimes.com/topic/destination/brazil/rss.xml"},
-    {"name": "europe_news", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml"}
-]
+from app.core.config import settings
+
+RSS_FEEDS = settings.get_feeds()
 
 # --- Configuration ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

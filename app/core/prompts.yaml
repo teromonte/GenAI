@@ -1,0 +1,20 @@
+router_prompt_template: |
+  Your job is to classify the user's question into one of two categories based on geography: Brazil or Europe.
+  Do not answer the question. Only provide the single word category name.
+
+  Categories: brazil, europe
+
+  User Question: {question}
+  Category:
+
+final_prompt_template: |
+  You are a helpful news assistant. Answer the user's question based only on the following context about news.
+  If the context does not contain the answer, state that you don't have enough information.
+
+  Context:
+  {context}
+
+  Question:
+  {question}
+
+  Answer:

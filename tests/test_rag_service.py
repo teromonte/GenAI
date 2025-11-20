@@ -1,51 +1,71 @@
-from unittest.mock import MagicMock, patch
+import pytest
+from unittest.mock import MagicMock, patch, AsyncMock
 from app.services.rag_service import RAGService
 
-def test_decide_retriever_brazil():
+@pytest.mark.asyncio
+async def test_decide_retriever_brazil():
     # Mock the dependencies
     with patch("app.services.rag_service.ChatGroq") as MockGroq, \
-         patch("app.services.rag_service.get_retriever") as mock_get_retriever:
+         patch("app.services.rag_service.get_retriever") as mock_get_retriever, \
+         patch("app.services.rag_service.settings") as mock_settings:
         
         # Setup mocks
         mock_llm = MagicMock()
         MockGroq.return_value = mock_llm
         
+        mock_settings.get_prompts.return_value = {
+            "router_prompt_template": "router",
+            "final_prompt_template": "final"
+        }
+        
         # Create service instance
         service = RAGService()
         
         # Mock the routing chain result
-        # The chain is router_prompt | llm | StrOutputParser
-        # We need to mock the invoke method of the chain
         service.routing_chain = MagicMock()
-        service.routing_chain.invoke.return_value = "brazil"
+        service.routing_chain.ainvoke = AsyncMock(return_value="brazil")
         
         # Test
-        retriever = service.decide_retriever({"question": "News about Rio?"})
+        retriever = await service.decide_retriever({"question": "News about Rio?"})
         
         # Assert
         assert retriever == service.brazil_retriever
 
-def test_decide_retriever_europe():
+@pytest.mark.asyncio
+async def test_decide_retriever_europe():
     with patch("app.services.rag_service.ChatGroq") as MockGroq, \
-         patch("app.services.rag_service.get_retriever") as mock_get_retriever:
+         patch("app.services.rag_service.get_retriever") as mock_get_retriever, \
+         patch("app.services.rag_service.settings") as mock_settings:
         
+        mock_settings.get_prompts.return_value = {
+            "router_prompt_template": "router",
+            "final_prompt_template": "final"
+        }
+
         service = RAGService()
         service.routing_chain = MagicMock()
-        service.routing_chain.invoke.return_value = "europe"
+        service.routing_chain.ainvoke = AsyncMock(return_value="europe")
         
-        retriever = service.decide_retriever({"question": "News about Paris?"})
+        retriever = await service.decide_retriever({"question": "News about Paris?"})
         
         assert retriever == service.europe_retriever
 
-def test_decide_retriever_default():
+@pytest.mark.asyncio
+async def test_decide_retriever_default():
     with patch("app.services.rag_service.ChatGroq") as MockGroq, \
-         patch("app.services.rag_service.get_retriever") as mock_get_retriever:
+         patch("app.services.rag_service.get_retriever") as mock_get_retriever, \
+         patch("app.services.rag_service.settings") as mock_settings:
         
+        mock_settings.get_prompts.return_value = {
+            "router_prompt_template": "router",
+            "final_prompt_template": "final"
+        }
+
         service = RAGService()
         service.routing_chain = MagicMock()
-        service.routing_chain.invoke.return_value = "unknown"
+        service.routing_chain.ainvoke = AsyncMock(return_value="unknown")
         
         # Should default to Brazil
-        retriever = service.decide_retriever({"question": "Random question"})
+        retriever = await service.decide_retriever({"question": "Random question"})
         
         assert retriever == service.brazil_retriever

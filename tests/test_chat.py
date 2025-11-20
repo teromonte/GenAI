@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 from app.services.rag_service import get_rag_service
 from app.core.security import create_access_token
@@ -15,13 +15,14 @@ def test_chat_endpoint(client: TestClient, db_session):
 
     # 2. Mock the RAG Service
     mock_service = MagicMock()
-    mock_service.ask_question.return_value = {
+    # Use AsyncMock for the async method
+    mock_service.ask_question = AsyncMock(return_value={
         "answer": "This is a mocked answer.",
         "context": [
             Document(page_content="Source text 1", metadata={"source": "http://example.com/1"}),
             Document(page_content="Source text 2", metadata={"source": "http://example.com/2"})
         ]
-    }
+    })
 
     # Override the dependency
     from app.main import app

@@ -13,21 +13,21 @@ spec:
         app: newscenter
     spec:
       containers:
-      - name: newscenter-api
-        image: teromonte/newscenter-api:v2
-        imagePullPolicy: Always # Uncomment this when testing cloud deployment
-        ports:
-        - containerPort: 8000
-        envFrom:
-        - secretRef:
-            name: app-secrets
-        # We still mount the ChromaDB volume
-        volumeMounts:
-        - name: chroma-storage
-          mountPath: /app/chroma_db
+        - name: newscenter-api
+          image: teromonte/newscenter-api:v3
+          imagePullPolicy: Always # Uncomment this when testing cloud deployment
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: app-secrets
+          # We still mount the ChromaDB volume
+          volumeMounts:
+            - name: chroma-storage
+              mountPath: /app/chroma_db
       volumes:
-      - name: chroma-storage
-        hostPath:
-          # Update 'thiag' to your user
-          path: /home/ubuntu/genai_data/chroma_db
-          type: DirectoryOrCreate
+        - name: chroma-storage
+          hostPath:
+            # Update 'thiag' to your user
+            path: /home/ubuntu/genai_data/chroma_db
+            type: DirectoryOrCreate

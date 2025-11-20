@@ -60,11 +60,11 @@ resource "aws_instance" "genai_server" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
   key_name      = var.key_name
-  
+
   security_groups = [aws_security_group.genai_sg.name]
 
   root_block_device {
-    volume_size = 20
+    volume_size = 40
     volume_type = "gp3"
   }
 

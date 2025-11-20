@@ -1,0 +1,5 @@
+feeds:
+  - name: "brazil_news"
+    url: "https://www.nytimes.com/svc/collections/v1/publish/https://www.nytimes.com/topic/destination/brazil/rss.xml"
+  - name: "europe_news"
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml"

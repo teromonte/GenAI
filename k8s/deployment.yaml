@@ -14,13 +14,25 @@ spec:
     spec:
       containers:
         - name: newscenter-api
-          image: teromonte/newscenter-api:v3
+          image: teromonte/newscenter-api:v4
           imagePullPolicy: Always # Uncomment this when testing cloud deployment
           ports:
             - containerPort: 8000
           envFrom:
             - secretRef:
                 name: app-secrets
+          env:
+            - name: LANGCHAIN_TRACING_V2
+              value: "true"
+            - name: LANGCHAIN_ENDPOINT
+              value: "https://api.smith.langchain.com"
+            - name: LANGCHAIN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: langchain-api-key
+            - name: LANGCHAIN_PROJECT
+              value: "newsbot-rag"
           # We still mount the ChromaDB volume
           volumeMounts:
             - name: chroma-storage

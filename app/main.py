@@ -12,11 +12,15 @@ setup_logging()
 logger = structlog.get_logger()
 
 # Explicitly set LangChain environment variables for tracing
-# LangChain reads these directly from os.environ, not from Pydantic settings
-# CRITICAL: LangSmith needs LANGSMITH_API_KEY, not LANGCHAIN_API_KEY
+# LangChain reads these directly from os.environ
 os.environ["LANGCHAIN_TRACING_V2"] = settings.LANGCHAIN_TRACING_V2
 os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGCHAIN_ENDPOINT
-os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY 
+
+# Ensure LANGCHAIN_API_KEY is set (critical for tracing)
+# If LANGCHAIN_API_KEY is not already in env (e.g. from k8s), try to use LANGSMITH_API_KEY from settings
+if "LANGCHAIN_API_KEY" not in os.environ and settings.LANGSMITH_API_KEY:
+    os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY
+
 os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
 
 logger.info(
@@ -24,8 +28,8 @@ logger.info(
     project=settings.LANGCHAIN_PROJECT,
     tracing_enabled=settings.LANGCHAIN_TRACING_V2,
     endpoint=settings.LANGCHAIN_ENDPOINT,
-    api_key_set=bool(settings.LANGSMITH_API_KEY),
-    api_key_length=len(settings.LANGSMITH_API_KEY) if settings.LANGSMITH_API_KEY else 0
+    api_key_set=bool(os.environ.get("LANGCHAIN_API_KEY")),
+    api_key_length=len(os.environ.get("LANGCHAIN_API_KEY", ""))
 )
 
 # Create the FastAPI app instance

@@ -28,6 +28,11 @@ spec:
               value: "true"
             - name: LANGCHAIN_ENDPOINT
               value: "https://api.smith.langchain.com"
+            - name: LANGCHAIN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: langchain-api-key
             - name: LANGSMITH_API_KEY
               valueFrom:
                 secretKeyRef:

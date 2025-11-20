@@ -2,6 +2,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 from langchain_groq import ChatGroq
+from langsmith import traceable
 from app.db.vector_store import get_retriever
 from app.core.config import settings
 
@@ -25,6 +26,7 @@ class RAGService:
         # 4. Create the routing chain
         self.routing_chain = self.router_prompt | self.llm | StrOutputParser()
 
+    @traceable
     async def decide_retriever(self, input_dict):
         """
         Runs the routing chain and returns the appropriate retriever object.
@@ -41,6 +43,7 @@ class RAGService:
         else:
             return self.brazil_retriever
 
+    @traceable
     async def ask_question(self, question: str) -> dict:
         """
         Executes the full RAG pipeline and returns the answer and source documents.

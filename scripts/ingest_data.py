@@ -2,6 +2,7 @@ import feedparser
 import logging
 import os
 import json
+import langsmith as ls
 from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -21,6 +22,7 @@ RSS_FEEDS = settings.get_feeds()
 # --- Configuration ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
+@ls.traceable
 def parse_rss_feed(feed_url: str) -> list[Document]:
     try:
         feed = feedparser.parse(feed_url)
@@ -48,6 +50,7 @@ def parse_rss_feed(feed_url: str) -> list[Document]:
         return []
 
 
+@ls.traceable
 def ingest_data():
     logging.info("Starting data ingestion process...")
 

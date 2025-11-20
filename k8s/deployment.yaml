@@ -40,6 +40,8 @@ spec:
                   key: langchain-api-key
             - name: LANGCHAIN_PROJECT
               value: "newsbot-rag"
+            - name: LANGSMITH_TRACING
+              value: "true"
           # We still mount the ChromaDB volume
           volumeMounts:
             - name: chroma-storage

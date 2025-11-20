@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Dict, Any
 
 # Pydantic model for a single source document
@@ -14,8 +14,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     source_documents: List[SourceDocument]
-
-from pydantic import EmailStr
 
 # --- Auth Schemas ---
 
@@ -34,3 +32,12 @@ class UserOut(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class ChatHistoryOut(BaseModel):
+    id: int
+    question: str
+    answer: str
+    timestamp: Any
+
+    class Config:
+        from_attributes = True

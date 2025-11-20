@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 import structlog
 
-from app.api.schemas import ChatRequest, ChatResponse, SourceDocument
+from app.api.schemas import ChatRequest, ChatResponse, SourceDocument, ChatHistoryOut
 # Import Auth and DB dependencies
 from app.api.deps import get_current_user 
 from app.db.session import get_db
@@ -100,3 +100,54 @@ async def chat_stream_endpoint(
             yield f"Error: {str(e)}"
 
     return StreamingResponse(generate(), media_type="text/plain")
+
+@router.get("/history", response_model=list[ChatHistoryOut])
+def get_chat_history(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    offset: int = 0,
+    limit: int = 50
+):
+    """
+    Get the chat history for the current user with pagination.
+    """
+    # Get total count for pagination
+    total_count = db.query(ChatHistory).filter(
+        ChatHistory.user_id == current_user.id
+    ).count()
+    
+    # Get paginated history
+    history = db.query(ChatHistory).filter(
+        ChatHistory.user_id == current_user.id
+    ).order_by(ChatHistory.timestamp.desc()).offset(offset).limit(limit).all()
+    
+    # Add total count to response headers
+    response.headers["X-Total-Count"] = str(total_count)
+    
+    return history
+
+@router.delete("/history/{history_id}", status_code=204)
+def delete_chat_history(
+    history_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a specific chat history item.
+    Only the owner can delete their own history.
+    """
+    # Find the history item
+    history_item = db.query(ChatHistory).filter(
+        ChatHistory.id == history_id,
+        ChatHistory.user_id == current_user.id
+    ).first()
+    
+    if not history_item:
+        raise HTTPException(status_code=404, detail="History item not found")
+    
+    # Delete the item
+    db.delete(history_item)
+    db.commit()
+    
+    return Response(status_code=204)

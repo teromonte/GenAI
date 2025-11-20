@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -91,6 +92,19 @@ export default function LoginPage() {
                         Sign In
                     </button>
                 </form>
+
+                {/* Signup Link */}
+                <div className="mt-6 text-center">
+                    <p className="text-gray-400 text-sm">
+                        Don't have an account?{" "}
+                        <Link
+                            href="/signup"
+                            className="text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                            Sign up
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
     );

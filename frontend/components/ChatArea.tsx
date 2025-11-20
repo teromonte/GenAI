@@ -4,6 +4,7 @@ import { Send, Bot, User } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useChatContext } from "@/contexts/ChatContext";
 
 interface Message {
     role: "user" | "assistant";
@@ -12,10 +13,11 @@ interface Message {
 
 export default function ChatArea() {
     const [input, setInput] = useState("");
-    const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [streamingMessage, setStreamingMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
+    const { messages, addMessage, clearMessages, triggerHistoryRefresh } = useChatContext();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -23,18 +25,18 @@ export default function ChatArea() {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages]);
+    }, [messages, streamingMessage]);
 
     const sendMessage = async () => {
         if (!input.trim() || isLoading) return;
 
         const userMessage = input;
         setInput("");
-        setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
-        setIsLoading(true);
 
-        // Add placeholder for assistant message
-        setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+        // Add user message to context
+        addMessage({ role: "user", content: userMessage });
+        setIsLoading(true);
+        setStreamingMessage("");
 
         try {
             const token = localStorage.getItem("token");
@@ -57,128 +59,142 @@ export default function ChatArea() {
                 return;
             }
 
-            if (!res.ok || !res.body) {
-                throw new Error("Failed to send message");
+            if (!res.ok) {
+                throw new Error("Failed to get response");
             }
 
-            const reader = res.body.getReader();
+            const reader = res.body?.getReader();
             const decoder = new TextDecoder();
-            let done = false;
-            let assistantMessage = "";
+            let fullResponse = "";
 
-            while (!done) {
-                const { value, done: doneReading } = await reader.read();
-                done = doneReading;
-                const chunkValue = decoder.decode(value, { stream: true });
-                assistantMessage += chunkValue;
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                setMessages((prev) => {
-                    const newMessages = [...prev];
-                    const lastMessage = newMessages[newMessages.length - 1];
-                    if (lastMessage.role === "assistant") {
-                        lastMessage.content = assistantMessage;
-                    }
-                    return newMessages;
-                });
-            }
-        } catch (error) {
-            console.error("Error sending message:", error);
-            setMessages((prev) => {
-                const newMessages = [...prev];
-                const lastMessage = newMessages[newMessages.length - 1];
-                if (lastMessage.role === "assistant" && lastMessage.content === "") {
-                    lastMessage.content = "Sorry, something went wrong. Please try again.";
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullResponse += chunk;
+                    setStreamingMessage(fullResponse);
                 }
-                return newMessages;
-            });
+            }
+
+            // Add complete assistant message to context
+            addMessage({ role: "assistant", content: fullResponse });
+            setStreamingMessage("");
+
+            // Trigger history refresh in sidebar
+            triggerHistoryRefresh();
+
+        } catch (error) {
+            console.error("Error:", error);
+            const errorMsg = "Sorry, I encountered an error. Please try again.";
+            addMessage({ role: "assistant", content: errorMsg });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     };
 
+    // Combine context messages with streaming message
+    const displayMessages = [...messages];
+    if (streamingMessage) {
+        displayMessages.push({ role: "assistant", content: streamingMessage });
+    }
+
     return (
-        <div className="flex-1 flex flex-col h-screen bg-gray-950 text-gray-100">
-            {/* Header */}
-            <header className="p-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/50 backdrop-blur-sm">
-                <h1 className="text-lg font-semibold flex items-center gap-2">
-                    <Bot className="text-blue-500" />
-                    GenAI Assistant
-                </h1>
-                <div className="text-xs text-gray-500">v1.0.2</div>
-            </header>
-
+        <div className="flex-1 flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {messages.length === 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex gap-4 max-w-3xl mx-auto"
-                    >
-                        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                            <Bot size={18} />
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {displayMessages.length === 0 ? (
+                    <div className="h-full flex items-center justify-center">
+                        <div className="text-center space-y-4">
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", stiffness: 200 }}
+                            >
+                                <Bot size={64} className="mx-auto text-blue-400" />
+                            </motion.div>
+                            <h2 className="text-2xl font-bold text-slate-200">
+                                Welcome to NewsBot RAG
+                            </h2>
+                            <p className="text-slate-400 max-w-md">
+                                Ask me anything about recent news from Brazil and Europe.
+                                I'll search through the latest articles to give you accurate answers.
+                            </p>
                         </div>
-                        <div className="flex-1 space-y-2">
-                            <div className="font-medium text-sm text-blue-400">Assistant</div>
-                            <div className="prose prose-invert max-w-none text-gray-300">
-                                <p>Hello! I'm your GenAI assistant. How can I help you today?</p>
+                    </div>
+                ) : (
+                    displayMessages.map((message, index) => (
+                        <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className={`flex gap-4 ${message.role === "user" ? "justify-end" : "justify-start"
+                                }`}
+                        >
+                            {message.role === "assistant" && (
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                                    <Bot size={20} className="text-white" />
+                                </div>
+                            )}
+                            <div
+                                className={`max-w-3xl rounded-2xl px-6 py-4 ${message.role === "user"
+                                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                                    : "bg-slate-800 text-slate-100 border border-slate-700"
+                                    }`}
+                            >
+                                <p className="whitespace-pre-wrap leading-relaxed">
+                                    {message.content}
+                                </p>
                             </div>
-                        </div>
-                    </motion.div>
+                            {message.role === "user" && (
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+                                    <User size={20} className="text-white" />
+                                </div>
+                            )}
+                        </motion.div>
+                    ))
                 )}
-
-                {messages.map((msg, idx) => (
-                    <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex gap-4 max-w-3xl mx-auto"
-                    >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'assistant' ? 'bg-blue-600' : 'bg-gray-700'}`}>
-                            {msg.role === 'assistant' ? <Bot size={18} /> : <User size={18} />}
-                        </div>
-                        <div className="flex-1 space-y-2">
-                            <div className={`font-medium text-sm ${msg.role === 'assistant' ? 'text-blue-400' : 'text-gray-400'}`}>
-                                {msg.role === 'assistant' ? 'Assistant' : 'You'}
-                            </div>
-                            <div className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap">
-                                {msg.content}
-                            </div>
-                        </div>
-                    </motion.div>
-                ))}
                 <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
-            <div className="p-4 border-t border-gray-800 bg-gray-900/30">
-                <div className="max-w-3xl mx-auto relative">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Ask anything..."
-                        className="w-full bg-gray-800 text-white rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none h-[52px] overflow-hidden"
-                        rows={1}
-                        disabled={isLoading}
-                    />
-                    <button
-                        onClick={sendMessage}
-                        className="absolute right-2 top-2 p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={!input.trim() || isLoading}
-                    >
-                        <Send size={18} />
-                    </button>
-                </div>
-                <div className="text-center text-xs text-gray-500 mt-2">
-                    AI can make mistakes. Check important info.
+            <div className="border-t border-slate-700 p-6 bg-slate-900/50 backdrop-blur-sm">
+                <div className="max-w-4xl mx-auto">
+                    <div className="flex gap-4 items-end">
+                        <div className="flex-1 relative">
+                            <textarea
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={handleKeyPress}
+                                placeholder="Ask about recent news..."
+                                disabled={isLoading}
+                                className="w-full px-6 py-4 bg-slate-800 border border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-slate-100 placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                rows={1}
+                                style={{
+                                    minHeight: "56px",
+                                    maxHeight: "200px",
+                                }}
+                            />
+                        </div>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={sendMessage}
+                            disabled={isLoading || !input.trim()}
+                            className="px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl hover:from-blue-500 hover:to-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        >
+                            <Send size={20} />
+                        </motion.button>
+                    </div>
                 </div>
             </div>
         </div>

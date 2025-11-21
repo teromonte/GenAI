@@ -3,19 +3,16 @@ kind: Ingress
 metadata:
   name: newscenter-ingress
   annotations:
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    # Increase timeouts for streaming responses
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
-    # Enable CORS for cross-origin requests
-    nginx.ingress.kubernetes.io/enable-cors: "true"
+    # We remove Nginx annotations because Traefik ignores them.
+    # If you need CORS/Timeouts later, we configure them differently in Traefik.
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
+  ingressClassName: traefik
   rules:
     - host: newsbot.local
       http:
         paths:
-          # Backend API routes (must come first for proper matching)
+          # Route /api requests to the Backend
           - path: /api
             pathType: Prefix
             backend:
@@ -23,7 +20,7 @@ spec:
                 name: newscenter-service
                 port:
                   number: 8000
-          # Frontend routes (catch-all)
+          # Route everything else to the Frontend
           - path: /
             pathType: Prefix
             backend:

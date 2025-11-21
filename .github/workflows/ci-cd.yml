@@ -74,16 +74,29 @@ jobs:
         run: |
           echo "Deploying version $SHA to $SERVER_IP"
 
-          # Update Backend Deployment
-          ssh $SSH_USER@$SERVER_IP "sudo kubectl set image deployment/newscenter-deployment newscenter-api=$BACKEND_IMAGE:$SHA"
+          # 1. Scale down to 0 to free up resources
+          ssh $SSH_USER@$SERVER_IP "sudo kubectl scale deployment newscenter-deployment --replicas=0"
+          ssh $SSH_USER@$SERVER_IP "sudo kubectl scale deployment newsbot-frontend-deployment --replicas=0"
 
-          # Update Frontend Deployment
+          # 2. Wait for pods to terminate
+          ssh $SSH_USER@$SERVER_IP "sudo kubectl wait --for=delete pod -l app=newscenter --timeout=60s || true"
+          ssh $SSH_USER@$SERVER_IP "sudo kubectl wait --for=delete pod -l app=newsbot-frontend --timeout=60s || true"
+
+          # 3. Prune old images to free disk space
+          ssh $SSH_USER@$SERVER_IP "sudo crictl rmi --prune"
+
+          # 4. Update Deployments with new image version
+          ssh $SSH_USER@$SERVER_IP "sudo kubectl set image deployment/newscenter-deployment newscenter-api=$BACKEND_IMAGE:$SHA"
           ssh $SSH_USER@$SERVER_IP "sudo kubectl set image deployment/newsbot-frontend-deployment newsbot-frontend=$FRONTEND_IMAGE:$SHA"
 
-          # Wait for rollout
+          # 5. Scale back up
+          ssh $SSH_USER@$SERVER_IP "sudo kubectl scale deployment newscenter-deployment --replicas=1"
+          ssh $SSH_USER@$SERVER_IP "sudo kubectl scale deployment newsbot-frontend-deployment --replicas=1"
+
+          # 6. Wait for rollout
           ssh $SSH_USER@$SERVER_IP "sudo kubectl rollout status deployment/newscenter-deployment"
           ssh $SSH_USER@$SERVER_IP "sudo kubectl rollout status deployment/newsbot-frontend-deployment"
 
-          # Run Migrations
+          # 7. Run Migrations
           POD=$(ssh $SSH_USER@$SERVER_IP "sudo kubectl get pods -l app=newscenter -o jsonpath='{.items[0].metadata.name}'")
           ssh $SSH_USER@$SERVER_IP "sudo kubectl exec $POD -- alembic upgrade head"

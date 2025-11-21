@@ -3,19 +3,31 @@ kind: Ingress
 metadata:
   name: newscenter-ingress
   annotations:
-    # Tell K8s to use the Nginx controller we just installed
     kubernetes.io/ingress.class: nginx
-    # Optional: remove limits on upload size if you send large data
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # Increase timeouts for streaming responses
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    # Enable CORS for cross-origin requests
+    nginx.ingress.kubernetes.io/enable-cors: "true"
 spec:
   rules:
-  - host: newsbot.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: newscenter-service
-            port:
-              number: 8000
+    - host: newsbot.local
+      http:
+        paths:
+          # Backend API routes (must come first for proper matching)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: newscenter-service
+                port:
+                  number: 8000
+          # Frontend routes (catch-all)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: newsbot-frontend-service
+                port:
+                  number: 3000

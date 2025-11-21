@@ -30,7 +30,7 @@ export default function Sidebar() {
 
         setLoading(true);
         try {
-            const res = await fetch(`/api/history?offset=${currentOffset}&limit=${limit}`, {
+            const res = await fetch(`/api/chat/history?offset=${currentOffset}&limit=${limit}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) {
@@ -113,7 +113,7 @@ export default function Sidebar() {
         setTimeout(async () => {
             if (pendingDeletesRef.current.has(id)) {
                 try {
-                    const res = await fetch(`/api/history/${id}`, {
+                    const res = await fetch(`/api/chat/history/${id}`, {
                         method: "DELETE",
                         headers: { Authorization: `Bearer ${token}` },
                     });

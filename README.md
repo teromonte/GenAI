@@ -16,6 +16,7 @@ Geo-aware Retrieval Augmented Generation platform that showcases an end-to-end G
 | OpenAPI JSON | `http://newsbot.local:8000/openapi.json` | Useful for client generation. |
 | Grafana Dashboards | `http://grafana.newsbot.local` | Traefik ingress `grafana.newsbot.local`; add to hosts file to access Loki/Prom metrics. |
 | Direct IP fallback | `http://98.92.132.139/` | When DNS overrides are not possible; append `:8000/docs` for Swagger. |
+| LangsSmith | `https://smith.langchain.com/` | LLM logs and metrics |
 
 > Update host entries locally before accessing utilities. All URLs are served via Traefik, so HTTPS offload can be layered in front if needed.
 

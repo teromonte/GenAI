@@ -22,6 +22,7 @@ interface ChatContextType {
     addMessage: (message: Message) => void;
     clearMessages: () => void;
     triggerHistoryRefresh: () => void;
+    setActiveHistoryId: (id: number | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -67,6 +68,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 addMessage,
                 clearMessages,
                 triggerHistoryRefresh,
+                setActiveHistoryId,
             }}
         >
             {children}

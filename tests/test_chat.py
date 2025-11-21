@@ -42,9 +42,23 @@ def test_chat_endpoint(client: TestClient, db_session):
         assert data["answer"] == "This is a mocked answer."
         assert len(data["source_documents"]) == 2
         assert data["source_documents"][0]["page_content"] == "Source text 1"
+        assert isinstance(data["history_id"], int)
+        history_id = data["history_id"]
 
         # Verify RAG service was called
         mock_service.ask_question.assert_called_once_with("What is the news?")
+
+        # Send another question using the existing history_id
+        mock_service.ask_question.reset_mock()
+        response_second = client.post(
+            "/api/chat",
+            json={"question": "Any updates?", "history_id": history_id},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response_second.status_code == 200
+        data_second = response_second.json()
+        assert data_second["history_id"] == history_id
+        mock_service.ask_question.assert_called_once_with("Any updates?")
 
     finally:
         app.dependency_overrides.clear()

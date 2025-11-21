@@ -9,11 +9,13 @@ class SourceDocument(BaseModel):
 # Pydantic model for the incoming request from the user
 class ChatRequest(BaseModel):
     question: str
+    history_id: int | None = None
 
 # Pydantic model for the outgoing response from the API
 class ChatResponse(BaseModel):
     answer: str
     source_documents: List[SourceDocument]
+    history_id: int
 
 # --- Auth Schemas ---
 

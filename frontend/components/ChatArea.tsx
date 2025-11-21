@@ -17,7 +17,7 @@ export default function ChatArea() {
     const [streamingMessage, setStreamingMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
-    const { messages, addMessage, clearMessages, triggerHistoryRefresh } = useChatContext();
+    const { messages, addMessage, triggerHistoryRefresh, activeHistoryId, setActiveHistoryId } = useChatContext();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,7 +51,7 @@ export default function ChatArea() {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`,
                 },
-                body: JSON.stringify({ question: userMessage }),
+                body: JSON.stringify({ question: userMessage, history_id: activeHistoryId }),
             });
 
             if (res.status === 401) {
@@ -61,6 +61,11 @@ export default function ChatArea() {
 
             if (!res.ok) {
                 throw new Error("Failed to get response");
+            }
+
+            const newHistoryIdHeader = res.headers.get("X-History-Id");
+            if (newHistoryIdHeader) {
+                setActiveHistoryId(Number(newHistoryIdHeader));
             }
 
             const reader = res.body?.getReader();

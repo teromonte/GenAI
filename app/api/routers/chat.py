@@ -16,6 +16,70 @@ from app.services.rag_service import RAGService, get_rag_service
 router = APIRouter()
 logger = structlog.get_logger()
 
+def _upsert_history(
+    db: Session,
+    user_id: int,
+    question: str,
+    answer: str,
+    history_id: int | None = None,
+) -> ChatHistory:
+    history_item = None
+    if history_id:
+        history_item = (
+            db.query(ChatHistory)
+            .filter(ChatHistory.id == history_id, ChatHistory.user_id == user_id)
+            .first()
+        )
+
+    if history_item:
+        history_item.question = question
+        history_item.answer = answer
+        history_item.timestamp = datetime.utcnow()
+    else:
+        history_item = ChatHistory(
+            user_id=user_id,
+            question=question,
+            answer=answer,
+            timestamp=datetime.utcnow(),
+        )
+        db.add(history_item)
+
+    db.commit()
+    db.refresh(history_item)
+    return history_item
+
+def _get_or_create_history_stub(
+    db: Session,
+    user_id: int,
+    question: str,
+    history_id: int | None = None,
+) -> ChatHistory:
+    history_item = None
+    if history_id:
+        history_item = (
+            db.query(ChatHistory)
+            .filter(ChatHistory.id == history_id, ChatHistory.user_id == user_id)
+            .first()
+        )
+
+    if history_item:
+        history_item.question = question
+        history_item.timestamp = datetime.utcnow()
+        db.commit()
+        db.refresh(history_item)
+        return history_item
+
+    history_item = ChatHistory(
+        user_id=user_id,
+        question=question,
+        answer="",
+        timestamp=datetime.utcnow(),
+    )
+    db.add(history_item)
+    db.commit()
+    db.refresh(history_item)
+    return history_item
+
 @router.post("/", response_model=ChatResponse)
 @router.post("/chat", response_model=ChatResponse, include_in_schema=False)
 async def chat_endpoint(
@@ -36,16 +100,14 @@ async def chat_endpoint(
         result = await service.ask_question(request.question)
         answer_text = result.get("answer", "No answer found.")
         
-        # B. Save the interaction to the Database
-        # We use 'current_user.id' to link this chat to the logged-in user
-        history_item = ChatHistory(
+        # B. Save or update the interaction to the Database
+        history_item = _upsert_history(
+            db=db,
             user_id=current_user.id,
             question=request.question,
             answer=answer_text,
-            timestamp=datetime.utcnow()
+            history_id=request.history_id,
         )
-        db.add(history_item)
-        db.commit() # This persists the data to Postgres
         
         # C. Convert Documents (as before)
         raw_documents = result.get("context", [])
@@ -61,7 +123,8 @@ async def chat_endpoint(
         # D. Return response
         return ChatResponse(
             answer=answer_text,
-            source_documents=converted_documents
+            source_documents=converted_documents,
+            history_id=history_item.id,
         )
 
     except Exception as e:
@@ -76,6 +139,13 @@ async def chat_stream_endpoint(
     db: Session = Depends(get_db),
     service: RAGService = Depends(get_rag_service)
 ):
+    history_item = _get_or_create_history_stub(
+        db=db,
+        user_id=current_user.id,
+        question=request.question,
+        history_id=request.history_id,
+    )
+
     async def generate():
         full_answer = ""
         docs = []
@@ -88,20 +158,19 @@ async def chat_stream_endpoint(
                     yield chunk
             
             # Save history after streaming is done
-            history_item = ChatHistory(
-                user_id=current_user.id,
-                question=request.question,
-                answer=full_answer,
-                timestamp=datetime.utcnow()
-            )
+            history_item.answer = full_answer
+            history_item.timestamp = datetime.utcnow()
             db.add(history_item)
             db.commit()
+            db.refresh(history_item)
             
         except Exception as e:
             logger.error("stream_error", error=str(e))
             yield f"Error: {str(e)}"
 
-    return StreamingResponse(generate(), media_type="text/plain")
+    response = StreamingResponse(generate(), media_type="text/plain")
+    response.headers["X-History-Id"] = str(history_item.id)
+    return response
 
 @router.get("/history", response_model=list[ChatHistoryOut])
 def get_chat_history(

@@ -43,17 +43,13 @@ Write-Host ""
 Write-Host "🔧 Phase 2: Scaling Down and Cleanup" -ForegroundColor Yellow
 
 # Scale down both deployments
-ssh -i $KEY ubuntu@$SERVER_IP "
-    sudo kubectl scale deployment newscenter-deployment --replicas=0
-    sudo kubectl scale deployment newsbot-frontend-deployment --replicas=0 2>/dev/null || true
-"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl scale deployment newscenter-deployment --replicas=0"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl scale deployment newsbot-frontend-deployment --replicas=0 2>/dev/null || true"
 
 # Wait for pods to terminate
 Write-Host "Waiting for pods to terminate..."
-ssh -i $KEY ubuntu@$SERVER_IP "
-    sudo kubectl wait --for=delete pod -l app=newscenter --timeout=60s 2>/dev/null || true
-    sudo kubectl wait --for=delete pod -l app=newsbot-frontend --timeout=60s 2>/dev/null || true
-"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl wait --for=delete pod -l app=newscenter --timeout=60s 2>/dev/null || true"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl wait --for=delete pod -l app=newsbot-frontend --timeout=60s 2>/dev/null || true"
 
 # Prune images
 Write-Host "Pruning old images..."
@@ -65,10 +61,8 @@ ssh -i $KEY ubuntu@$SERVER_IP "df -h /"
 
 # Pull both images
 Write-Host "Pulling images..."
-ssh -i $KEY ubuntu@$SERVER_IP "
-    sudo crictl pull teromonte/newscenter-api:${BACKEND_VERSION}
-    sudo crictl pull teromonte/newsbot-frontend:${FRONTEND_VERSION}
-"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo crictl pull teromonte/newscenter-api:${BACKEND_VERSION}"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo crictl pull teromonte/newsbot-frontend:${FRONTEND_VERSION}"
 
 Write-Host "✅ Cleanup complete" -ForegroundColor Green
 
@@ -86,11 +80,9 @@ scp -i $KEY k8s/service.yaml ubuntu@${SERVER_IP}:~/backend-service.yaml
 ssh -i $KEY ubuntu@$SERVER_IP "sed -i 's|image: teromonte/newscenter-api:.*|image: teromonte/newscenter-api:${BACKEND_VERSION}|g' backend-deployment.yaml"
 
 # Apply and scale
-ssh -i $KEY ubuntu@$SERVER_IP "
-    sudo kubectl apply -f backend-deployment.yaml
-    sudo kubectl apply -f backend-service.yaml
-    sudo kubectl scale deployment newscenter-deployment --replicas=1
-"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl apply -f backend-deployment.yaml"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl apply -f backend-service.yaml"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl scale deployment newscenter-deployment --replicas=1"
 
 Write-Host "Waiting for backend to be ready..."
 Start-Sleep -Seconds 15
@@ -118,12 +110,10 @@ scp -i $KEY k8s/ingress.yaml ubuntu@${SERVER_IP}:~/
 ssh -i $KEY ubuntu@$SERVER_IP "sed -i 's|image: teromonte/newsbot-frontend:.*|image: teromonte/newsbot-frontend:${FRONTEND_VERSION}|g' frontend-deployment.yaml"
 
 # Apply and scale
-ssh -i $KEY ubuntu@$SERVER_IP "
-    sudo kubectl apply -f frontend-deployment.yaml
-    sudo kubectl apply -f frontend-service.yaml
-    sudo kubectl apply -f ingress.yaml
-    sudo kubectl scale deployment newsbot-frontend-deployment --replicas=1
-"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl apply -f frontend-deployment.yaml"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl apply -f frontend-service.yaml"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl apply -f ingress.yaml"
+ssh -i $KEY ubuntu@$SERVER_IP "sudo kubectl scale deployment newsbot-frontend-deployment --replicas=1"
 
 Write-Host "Waiting for frontend to be ready..."
 Start-Sleep -Seconds 15
@@ -137,7 +127,7 @@ else {
 }
 
 # ============================================================================
-# Phase 5: Database Migrations (if needed)
+# Phase 5: Database Migrations
 # ============================================================================
 Write-Host ""
 Write-Host "💾 Phase 5: Database Migrations" -ForegroundColor Yellow
@@ -174,16 +164,4 @@ Write-Host ""
 Write-Host "📋 Access Instructions:" -ForegroundColor Cyan
 Write-Host "1. Add to hosts file: $SERVER_IP newsbot.local"
 Write-Host "2. Open browser: http://newsbot.local"
-Write-Host ""
-Write-Host "🔍 Monitoring Commands:" -ForegroundColor Cyan
-
-# Define commands in variables first to avoid quoting errors
-$cmdBackend = "ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl logs -l app=newscenter --tail=50'"
-$cmdFrontend = "ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl logs -l app=newsbot-frontend --tail=50'"
-$cmdWatch = "ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl get pods -w'"
-
-Write-Host "Backend logs:  $cmdBackend"
-Write-Host "Frontend logs: $cmdFrontend"
-Write-Host "Watch pods:    $cmdWatch"
-
 Write-Host ""

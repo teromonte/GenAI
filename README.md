@@ -12,11 +12,10 @@ Geo-aware Retrieval Augmented Generation platform that showcases an end-to-end G
 | Utility | URL | Notes |
 | --- | --- | --- |
 | Public Frontend | `http://newsbot.local/` | Map `98.92.132.139 newsbot.local` in `/etc/hosts` (Linux/macOS) or `C:\Windows\System32\drivers\etc\hosts`. |
-| API Base | `http://newsbot.local/api` | Routed through Traefik ingress; JWT-protected routes live under `/api/auth` and `/api/chat`. |
 | Interactive Docs (Swagger) | `http://newsbot.local:8000/docs` | FastAPI OpenAPI UI for manual testing. |
-| OpenAPI JSON | `http://newsbot.local/openapi.json` | Useful for client generation. |
+| OpenAPI JSON | `http://newsbot.local:8000/openapi.json` | Useful for client generation. |
 | Grafana Dashboards | `http://grafana.newsbot.local` | Traefik ingress `grafana.newsbot.local`; add to hosts file to access Loki/Prom metrics. |
-| Direct IP fallback | `http://98.92.132.139/` | When DNS overrides are not possible; append `/api/docs` for Swagger. |
+| Direct IP fallback | `http://98.92.132.139/` | When DNS overrides are not possible; append `:8000/docs` for Swagger. |
 
 > Update host entries locally before accessing utilities. All URLs are served via Traefik, so HTTPS offload can be layered in front if needed.
 

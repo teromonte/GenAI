@@ -3,16 +3,13 @@ kind: Ingress
 metadata:
   name: newscenter-ingress
   annotations:
-    # We remove Nginx annotations because Traefik ignores them.
-    # If you need CORS/Timeouts later, we configure them differently in Traefik.
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   ingressClassName: traefik
   rules:
-    - host: newsbot.local
-      http:
+    - http:  # <--- We removed "host: newsbot.local" here
         paths:
-          # Route /api requests to the Backend
+          # Backend API routes
           - path: /api
             pathType: Prefix
             backend:
@@ -20,7 +17,7 @@ spec:
                 name: newscenter-service
                 port:
                   number: 8000
-          # Route everything else to the Frontend
+          # Frontend routes
           - path: /
             pathType: Prefix
             backend:

@@ -37,7 +37,7 @@ logger.info(
 app = FastAPI(
     title="NewsBot RAG API",
     description="An API for chatting with recent news from Brazil and Europe.",
-    version="1.0.2"
+    version="1.0.5"
 )
 
 @app.middleware("http")
@@ -59,7 +59,7 @@ async def log_requests(request: Request, call_next):
     return response
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
-app.include_router(chat.router, prefix="/api", tags=["Chat"])
+app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 
 @app.get("/", tags=["Root"])
 async def read_root():

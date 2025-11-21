@@ -176,7 +176,14 @@ Write-Host "1. Add to hosts file: $SERVER_IP newsbot.local"
 Write-Host "2. Open browser: http://newsbot.local"
 Write-Host ""
 Write-Host "🔍 Monitoring Commands:" -ForegroundColor Cyan
-Write-Host "Backend logs:  ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl logs -l app=newscenter --tail=50'"
-Write-Host "Frontend logs: ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl logs -l app=newsbot-frontend --tail=50'"
-Write-Host "Watch pods:    ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl get pods -w'"
+
+# Define commands in variables first to avoid quoting errors
+$cmdBackend = "ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl logs -l app=newscenter --tail=50'"
+$cmdFrontend = "ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl logs -l app=newsbot-frontend --tail=50'"
+$cmdWatch = "ssh -i $KEY ubuntu@$SERVER_IP 'sudo kubectl get pods -w'"
+
+Write-Host "Backend logs:  $cmdBackend"
+Write-Host "Frontend logs: $cmdFrontend"
+Write-Host "Watch pods:    $cmdWatch"
+
 Write-Host ""

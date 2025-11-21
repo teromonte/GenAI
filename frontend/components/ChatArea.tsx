@@ -1,21 +1,20 @@
 "use client";
 
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, ArrowUp } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useChatContext } from "@/contexts/ChatContext";
-
-interface Message {
-    role: "user" | "assistant";
-    content: string;
-}
+import { MessageBubble } from "@/components/MessageBubble";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function ChatArea() {
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [streamingMessage, setStreamingMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const router = useRouter();
     const { messages, addMessage, triggerHistoryRefresh, activeHistoryId, setActiveHistoryId } = useChatContext();
 
@@ -27,11 +26,20 @@ export default function ChatArea() {
         scrollToBottom();
     }, [messages, streamingMessage]);
 
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "auto";
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [input]);
+
     const sendMessage = async () => {
         if (!input.trim() || isLoading) return;
 
         const userMessage = input;
         setInput("");
+        if (textareaRef.current) textareaRef.current.style.height = "auto";
 
         // Add user message to context
         addMessage({ role: "user", content: userMessage });
@@ -113,93 +121,80 @@ export default function ChatArea() {
     }
 
     return (
-        <div className="flex-1 flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="flex-1 flex flex-col h-full relative bg-background text-foreground">
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto">
                 {displayMessages.length === 0 ? (
-                    <div className="h-full flex items-center justify-center">
-                        <div className="text-center space-y-4">
-                            <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ type: "spring", stiffness: 200 }}
-                            >
-                                <Bot size={64} className="mx-auto text-blue-400" />
-                            </motion.div>
-                            <h2 className="text-2xl font-bold text-slate-200">
-                                Welcome to NewsBot RAG
-                            </h2>
-                            <p className="text-slate-400 max-w-md">
-                                Ask me anything about recent news from Brazil and Europe.
-                                I'll search through the latest articles to give you accurate answers.
-                            </p>
+                    <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                            <Bot size={24} className="text-primary" />
+                        </div>
+                        <h2 className="text-2xl font-semibold mb-2">How can I help you today?</h2>
+                        <p className="text-muted-foreground max-w-md mb-8">
+                            I can help you find the latest news from Brazil and Europe.
+                        </p>
+
+                        {/* Suggestions */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                            {[
+                                "Latest news from Brazil",
+                                "What's happening in Europe?",
+                                "Technology news today",
+                                "Sports updates"
+                            ].map((suggestion) => (
+                                <button
+                                    key={suggestion}
+                                    onClick={() => setInput(suggestion)}
+                                    className="p-4 rounded-xl border border-border hover:bg-muted/50 text-left text-sm transition-colors"
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 ) : (
-                    displayMessages.map((message, index) => (
-                        <motion.div
-                            key={index}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className={`flex gap-4 ${message.role === "user" ? "justify-end" : "justify-start"
-                                }`}
-                        >
-                            {message.role === "assistant" && (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                                    <Bot size={20} className="text-white" />
-                                </div>
-                            )}
-                            <div
-                                className={`max-w-3xl rounded-2xl px-6 py-4 ${message.role === "user"
-                                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                                    : "bg-slate-800 text-slate-100 border border-slate-700"
-                                    }`}
-                            >
-                                <p className="whitespace-pre-wrap leading-relaxed">
-                                    {message.content}
-                                </p>
-                            </div>
-                            {message.role === "user" && (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center flex-shrink-0">
-                                    <User size={20} className="text-white" />
-                                </div>
-                            )}
-                        </motion.div>
-                    ))
+                    <div className="flex flex-col max-w-3xl mx-auto w-full">
+                        {displayMessages.map((message, index) => (
+                            <MessageBubble
+                                key={index}
+                                role={message.role}
+                                content={message.content}
+                            />
+                        ))}
+                        <div ref={messagesEndRef} className="h-4" />
+                    </div>
                 )}
-                <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
-            <div className="border-t border-slate-700 p-6 bg-slate-900/50 backdrop-blur-sm">
-                <div className="max-w-4xl mx-auto">
-                    <div className="flex gap-4 items-end">
-                        <div className="flex-1 relative">
-                            <textarea
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyPress}
-                                placeholder="Ask about recent news..."
-                                disabled={isLoading}
-                                className="w-full px-6 py-4 bg-slate-800 border border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-slate-100 placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                rows={1}
-                                style={{
-                                    minHeight: "56px",
-                                    maxHeight: "200px",
-                                }}
-                            />
-                        </div>
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={sendMessage}
-                            disabled={isLoading || !input.trim()}
-                            className="px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl hover:from-blue-500 hover:to-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                        >
-                            <Send size={20} />
-                        </motion.button>
-                    </div>
+            <div className="w-full max-w-3xl mx-auto p-4 pb-8">
+                <div className="relative flex items-end gap-2 bg-muted/50 border border-input rounded-2xl p-3 focus-within:ring-1 focus-within:ring-ring focus-within:border-ring transition-all shadow-sm">
+                    <textarea
+                        ref={textareaRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                        placeholder="Message NewsBot..."
+                        disabled={isLoading}
+                        className="flex-1 bg-transparent border-0 focus:ring-0 resize-none max-h-48 py-3 px-2 text-sm scrollbar-thin scrollbar-thumb-muted-foreground/20"
+                        rows={1}
+                    />
+                    <Button
+                        size="icon"
+                        onClick={sendMessage}
+                        disabled={isLoading || !input.trim()}
+                        className={cn(
+                            "h-8 w-8 rounded-lg mb-1 transition-all",
+                            input.trim() ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
+                        )}
+                    >
+                        <ArrowUp size={16} />
+                    </Button>
+                </div>
+                <div className="text-center mt-2">
+                    <p className="text-xs text-muted-foreground">
+                        NewsBot can make mistakes. Check important info.
+                    </p>
                 </div>
             </div>
         </div>

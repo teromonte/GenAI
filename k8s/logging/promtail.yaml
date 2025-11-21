@@ -9,7 +9,7 @@ data:
     server:
       http_listen_port: 9080
       grpc_listen_port: 0
-      log_level: debug
+      log_level: info
 
     positions:
       filename: /run/promtail/positions.yaml
@@ -18,107 +18,26 @@ data:
       - url: http://loki:3100/loki/api/v1/push
 
     scrape_configs:
-      - job_name: static-pods
+      # STATIC DISCOVERY: Just read the files directly
+      - job_name: kubernetes-pods-static
         static_configs:
           - targets:
               - localhost
             labels:
-              job: varlogs
+              job: kubernetes-pods
+              # Read absolutely everything in the pods directory
               __path__: /var/log/pods/*/*/*.log
+        
         pipeline_stages:
+          # 1. Parse the filename to extract Namespace, Pod Name, Pod UID, Container Name
+          # K3s Path Format: /var/log/pods/<namespace>_<pod_name>_<uid>/<container_name>/<num>.log
           - regex:
-              expression: "^/var/log/pods/(?P<namespace>[^/]+)_(?P<pod_name>[^/]+)_(?P<uid>[^/]+)/(?P<container_name>[^/]+)/.*\\.log$"
               source: filename
+              expression: "^/var/log/pods/(?P<namespace>[^_]+)_(?P<pod_name>.+)_(?P<uid>[a-f0-9-]+)/(?P<container_name>[^/]+)/.*\\.log$"
+          
+          # 2. Use those extracted values as labels in Loki
           - labels:
               namespace:
               pod_name:
               container_name:
-          - regex:
-              expression: "^(?P<app>[a-z0-9-]+)-deployment-.*$"
-              source: pod_name
-          - labels:
-              app:
----
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: promtail
-  labels:
-    app: promtail
-spec:
-  selector:
-    matchLabels:
-      app: promtail
-  template:
-    metadata:
-      labels:
-        app: promtail
-    spec:
-      serviceAccountName: promtail-serviceaccount
-      containers:
-        - name: promtail
-          image: grafana/promtail:2.9.2
-          args:
-            - "-config.file=/etc/promtail/promtail.yaml"
-          volumeMounts:
-            - name: config
-              mountPath: /etc/promtail
-            - name: run
-              mountPath: /run/promtail
-            - name: pods
-              mountPath: /var/log/pods
-              readOnly: true
-            - name: docker
-              mountPath: /var/lib/docker/containers
-              readOnly: true
-      volumes:
-        - name: config
-          configMap:
-            name: promtail-config
-        - name: run
-          hostPath:
-            path: /run/promtail
-        - name: pods
-          hostPath:
-            path: /var/log/pods
-        - name: docker
-          hostPath:
-            path: /var/lib/docker/containers
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: promtail-serviceaccount
-  labels:
-    app: promtail
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: promtail-clusterrole
-  labels:
-    app: promtail
-rules:
-  - apiGroups: [""]
-    resources:
-      - nodes
-      - nodes/proxy
-      - services
-      - endpoints
-      - pods
-    verbs: ["get", "watch", "list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: promtail-clusterrolebinding
-  labels:
-    app: promtail
-subjects:
-  - kind: ServiceAccount
-    name: promtail-serviceaccount
-    namespace: default
-roleRef:
-  kind: ClusterRole
-  name: promtail-clusterrole
-  apiGroup: rbac.authorization.k8s.io
+              uid:

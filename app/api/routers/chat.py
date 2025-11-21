@@ -16,7 +16,8 @@ from app.services.rag_service import RAGService, get_rag_service
 router = APIRouter()
 logger = structlog.get_logger()
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, include_in_schema=False)
 async def chat_endpoint(
     request: ChatRequest,
     # 1. SECURITY: Ensure user is logged in
@@ -67,7 +68,8 @@ async def chat_endpoint(
         logger.error("chat_endpoint_error", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.post("/chat/stream")
+@router.post("/stream")
+@router.post("/chat/stream", include_in_schema=False)
 async def chat_stream_endpoint(
     request: ChatRequest,
     current_user: User = Depends(get_current_user),

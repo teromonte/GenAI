@@ -1,30 +1,22 @@
-services:
-  # 1. The API Service (Your App)
-  newscenter-api:
-    build: .
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    depends_on:
-      - db # Wait for the database to start before starting the API
-    volumes:
-      - .:/app
-      - ./chroma_db:/app/chroma_db
+version: '3.8'
 
-  # 2. The Database Service (PostgreSQL)
-  db:
+services:
+  postgres:
     image: postgres:15-alpine
-    restart: always
+    container_name: genai_postgres
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      POSTGRES_USER: genai_user
+      POSTGRES_PASSWORD: genai_password
+      POSTGRES_DB: genai_db
     ports:
-      - "5432:5432" # Expose port so you can check it with a GUI tool (DBeaver/pgAdmin)
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genai_user -d genai_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-# Define the named volume for Postgres data persistence
 volumes:
   postgres_data:

@@ -23,7 +23,12 @@ type GroupedHistory = {
     [key: string]: HistoryItem[];
 };
 
-export default function Sidebar() {
+interface SidebarProps {
+    activeView: 'chat' | 'feeds' | 'write';
+    onViewChange: (view: 'chat' | 'feeds' | 'write') => void;
+}
+
+export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
     const router = useRouter();
     const { loadConversation, startNewChat, activeHistoryId, refreshTrigger } = useChatContext();
     const { theme, setTheme } = useTheme();
@@ -78,10 +83,12 @@ export default function Sidebar() {
 
     const handleNewChat = () => {
         startNewChat();
+        onViewChange('chat');
     };
 
     const handleLoadConversation = (item: HistoryItem) => {
         loadConversation(item);
+        onViewChange('chat');
     };
 
     const handleDelete = async (id: number, question: string) => {
@@ -176,15 +183,43 @@ export default function Sidebar() {
     return (
         <div className="w-[260px] bg-black flex flex-col h-full border-r border-white/10">
             {/* New Chat Button */}
-            <div className="p-3">
+            <div className="p-3 space-y-2">
                 <Button
                     onClick={handleNewChat}
                     variant="outline"
-                    className="w-full justify-start gap-2 bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white transition-colors h-10"
+                    className={cn(
+                        "w-full justify-start gap-2 bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white transition-colors h-10",
+                        activeView === 'chat' && "bg-white/10"
+                    )}
                 >
                     <Plus size={16} />
                     <span>New chat</span>
                 </Button>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <Button
+                        onClick={() => onViewChange('feeds')}
+                        variant="ghost"
+                        className={cn(
+                            "justify-start gap-2 text-white/70 hover:text-white hover:bg-white/10 h-9 px-2",
+                            activeView === 'feeds' && "bg-white/10 text-white"
+                        )}
+                    >
+                        <LayoutDashboard size={16} />
+                        <span>Feeds</span>
+                    </Button>
+                    <Button
+                        onClick={() => onViewChange('write')}
+                        variant="ghost"
+                        className={cn(
+                            "justify-start gap-2 text-white/70 hover:text-white hover:bg-white/10 h-9 px-2",
+                            activeView === 'write' && "bg-white/10 text-white"
+                        )}
+                    >
+                        <MessageSquare size={16} />
+                        <span>Write</span>
+                    </Button>
+                </div>
             </div>
 
             {/* History List */}

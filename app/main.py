@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from app.api.routers import chat, auth
+from app.api.routers import chat, auth, feeds
 from app.core.logging import setup_logging
 from app.core.config import settings
 import structlog
@@ -60,6 +60,8 @@ async def log_requests(request: Request, call_next):
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(feeds.router, prefix="/api/feeds", tags=["Feeds"])
+
 
 @app.get("/", tags=["Root"])
 async def read_root():

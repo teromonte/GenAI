@@ -1,6 +1,9 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from langchain_core.output_parsers import StrOutputParser
 from langchain_groq import ChatGroq
 from langsmith import traceable
 from app.db.vector_store import get_retriever
@@ -8,94 +11,47 @@ from app.core.config import settings
 
 class RAGService:
     def __init__(self):
-        # 1. Initialize the LLM with the correct, currently supported model
+        # 1. Initialize the LLM
         self.llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
-        # 2. Get retrievers for each news source
-        self.brazil_retriever = get_retriever("brazil_news")
-        self.europe_retriever = get_retriever("europe_news")
+        # 2. Get retriever for the dynamic articles collection
+        self.articles_retriever = get_retriever("articles")
 
         # 3. Load prompts from config
         prompts = settings.get_prompts()
-        self.router_prompt_template = prompts["router_prompt_template"]
         self.final_prompt_template = prompts["final_prompt_template"]
-
-        self.router_prompt = ChatPromptTemplate.from_template(self.router_prompt_template)
         self.final_prompt = ChatPromptTemplate.from_template(self.final_prompt_template)
-
-        # 4. Create the routing chain
-        self.routing_chain = self.router_prompt | self.llm | StrOutputParser()
-
-    @traceable
-    async def decide_retriever(self, input_dict):
-        """
-        Runs the routing chain and returns the appropriate retriever object.
-        """
-        question = input_dict["question"]
-        route = await self.routing_chain.ainvoke({"question": question})
-        
-        print(f"--- Routing decision: {route} ---")
-
-        if "brazil" in route.lower():
-            return self.brazil_retriever
-        elif "europe" in route.lower():
-            return self.europe_retriever
-        else:
-            return self.brazil_retriever
 
     @traceable
     async def ask_question(self, question: str) -> dict:
         """
-        Executes the full RAG pipeline and returns the answer and source documents.
+        Executes the RAG pipeline using the articles collection.
         """
+        # Simple RAG: Retrieve -> Generate
+        docs = await self.articles_retriever.ainvoke(question)
         
-        # We define a helper function to handle the routing logic cleanly.
-        # It takes the input dictionary, picks the retriever, and then invokes it
-        # with the QUESTION STRING only.
-        async def route_and_retrieve(input_dict):
-            retriever = await self.decide_retriever(input_dict)
-            # Retrievers in LangChain are usually sync or have ainvoke.
-            # Chroma retriever supports ainvoke.
-            return await retriever.ainvoke(input_dict["question"])
-
-        # We use RunnableLambda to wrap our helper function
-        setup_and_retrieval = {
-            "context": RunnableLambda(route_and_retrieve),
-            "question": RunnablePassthrough()
-        }
-
-        # The part of the chain that generates the answer
         generation_chain = (
             self.final_prompt
             | self.llm
             | StrOutputParser()
         )
-
-        # The full RAG chain
-        full_rag_chain = setup_and_retrieval | RunnablePassthrough.assign(
-            answer=generation_chain
-        )
         
-        # Invoke the chain asynchronously
-        print(f"[DEBUG] About to invoke LangChain RAG chain for question: {question}")
-        result = await full_rag_chain.ainvoke({"question": question})
-        print(f"[DEBUG] LangChain RAG chain completed. Result keys: {result.keys()}")
-        return result
+        input_data = {"context": docs, "question": question}
+        answer = await generation_chain.ainvoke(input_data)
+        
+        return {
+            "answer": answer,
+            "context": docs
+        }
 
     @traceable(project_name="newsbot-rag")
     async def ask_question_stream(self, question: str):
         """
         Streams the answer for the given question.
-        Yields chunks of the answer.
         """
-        # 1. Retrieve context
-        retriever = await self.decide_retriever({"question": question})
-        docs = await retriever.ainvoke(question)
-        
-        # 2. Prepare input for generation
+        docs = await self.articles_retriever.ainvoke(question)
         input_data = {"context": docs, "question": question}
         
-        # 3. Stream answer
         generation_chain = (
             self.final_prompt
             | self.llm
@@ -104,6 +60,32 @@ class RAGService:
         
         async for chunk in generation_chain.astream(input_data):
             yield chunk, docs
+
+    @traceable
+    async def generate_article(self, topic: str, category: str = None) -> str:
+        """
+        Generates a new article based on the topic and optional category.
+        """
+        # 1. Retrieve relevant articles
+        # Note: Chroma retriever doesn't easily support dynamic metadata filtering via invoke param 
+        # without using the underlying vector store directly. 
+        # For now, we'll retrieve based on topic.
+        docs = await self.articles_retriever.ainvoke(topic)
+        
+        # 2. Generate Article
+        article_prompt = ChatPromptTemplate.from_template(
+            """You are an expert journalist. Write a comprehensive and engaging article about "{topic}" based on the following source information.
+            
+            Sources:
+            {context}
+            
+            The article should have a catchy title, a clear introduction, body paragraphs with specific details, and a conclusion.
+            Format the output in Markdown.
+            """
+        )
+        
+        chain = article_prompt | self.llm | StrOutputParser()
+        return await chain.ainvoke({"topic": topic, "context": docs})
 
 from functools import lru_cache
 

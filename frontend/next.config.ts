@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     // In development, proxy to localhost
     // In production, use internal K8s service name from env var
-    const apiUrl = process.env.API_URL || "http://localhost:8000";
+    const apiUrl = process.env.API_URL || "http://127.0.0.1:8001";
 
     return [
       {

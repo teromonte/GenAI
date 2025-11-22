@@ -35,7 +35,7 @@ export default function LoginPage() {
             const data = await res.json();
             localStorage.setItem("token", data.access_token);
             router.push("/");
-        } catch (err) {
+        } catch {
             setError("Login failed. Please check your credentials.");
         }
     };

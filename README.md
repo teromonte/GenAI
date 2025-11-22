@@ -318,7 +318,7 @@ ssh -i genai-key.pem ubuntu@98.92.132.139 "df -h /"
 ssh -i genai-key.pem ubuntu@98.92.132.139 "sudo crictl rmi --prune"
 ```
 
-#### Pod Not Starting
+#### Pod Not Starting (Common Issue)
 
 ```powershell
 ssh -i genai-key.pem ubuntu@98.92.132.139 "

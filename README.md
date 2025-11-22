@@ -12,14 +12,15 @@ Geo-aware Retrieval Augmented Generation platform that showcases an end-to-end G
 
 | Utility | URL | Notes |
 | --- | --- | --- |
-| Public Frontend | `http://newsbot.local/` | Map `98.92.132.139 newsbot.local` in `/etc/hosts` (Linux/macOS) or `C:\Windows\System32\drivers\etc\hosts`. |
-| Interactive Docs (Swagger) | `http://newsbot.local:8000/docs` | FastAPI OpenAPI UI for manual testing. |
-| OpenAPI JSON | `http://newsbot.local:8000/openapi.json` | Useful for client generation. |
+| Public Frontend | `https://247newsbot.monteiro.dev.br/` | Production frontend with SSL certificate (Let's Encrypt). |
+| Interactive Docs (Swagger) | `https://247newsbot.monteiro.dev.br/api/docs` | FastAPI OpenAPI UI for manual testing. |
+| OpenAPI JSON | `https://247newsbot.monteiro.dev.br/openapi.json` | Useful for client generation. |
+| API Base | `https://247newsbot.monteiro.dev.br/api` | Backend API endpoints (JWT-protected routes under `/api/auth` and `/api/chat`). |
 | Grafana Dashboards | `http://grafana.newsbot.local` | Traefik ingress `grafana.newsbot.local`; add to hosts file to access Loki/Prom metrics. |
-| Direct IP fallback | `http://98.92.132.139/` | When DNS overrides are not possible; append `:8000/docs` for Swagger. |
+| Local Development | `http://newsbot.local/` | Map `98.92.132.139 newsbot.local` in `/etc/hosts` (Linux/macOS) or `C:\Windows\System32\drivers\etc\hosts` for local testing. |
 | LangsSmith | `https://smith.langchain.com/` | LLM logs and metrics |
 
-> Update host entries locally before accessing utilities. All URLs are served via Traefik, so HTTPS offload can be layered in front if needed.
+> Production URLs use HTTPS with automatic SSL certificate management via cert-manager and Let's Encrypt. Local development URLs require hosts file configuration.
 
 ## Architecture Deep Dive
 
@@ -387,7 +388,9 @@ git push origin main
 - Controlled deployments (deploy only when ready)
 - Less disk space usage on server
 
-### Hosts File Configuration
+### Hosts File Configuration (Local Development Only)
+
+For local development/testing, you can map the IP to a local hostname:
 
 **Windows:** Edit `C:\Windows\System32\drivers\etc\hosts` (as Administrator)
 
@@ -398,6 +401,8 @@ git push origin main
 ```
 
 Then access: **<http://newsbot.local>**
+
+> **Note:** For production access, use `https://247newsbot.monteiro.dev.br` - no hosts file configuration needed!
 
 ## DevOps Command Reference
 
@@ -449,7 +454,7 @@ Then access: **<http://newsbot.local>**
 
 - Add automated evaluation of RAG responses (LangSmith dataset runs).
 - Introduce autoscaling (KEDA/HPA) once traffic patterns stabilize.
-- Wire HTTPS certificates (Let's Encrypt via Traefik) for public-facing hosts.
+- Configure Grafana subdomain with SSL certificate for secure dashboard access.
 - Publish a Postman collection and embed it in the Utils section.
 
 ---

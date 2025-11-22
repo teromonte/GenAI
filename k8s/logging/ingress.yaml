@@ -3,9 +3,20 @@ kind: Ingress
 metadata:
   name: grafana-ingress
   annotations:
-    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   rules:
+    - host: grafana.247newsbot.monteiro.dev.br
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
     - host: grafana.newsbot.local
       http:
         paths:

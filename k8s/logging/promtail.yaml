@@ -18,7 +18,7 @@ data:
       - url: http://loki:3100/loki/api/v1/push
 
     scrape_configs:
-      # STATIC DISCOVERY: Just read the files directly
+      # STATIC DISCOVERY: Read files directly and extract service names
       - job_name: kubernetes-pods-static
         static_configs:
           - targets:
@@ -35,9 +35,90 @@ data:
               source: filename
               expression: "^/var/log/pods/(?P<namespace>[^_]+)_(?P<pod_name>.+)_(?P<uid>[a-f0-9-]+)/(?P<container_name>[^/]+)/.*\\.log$"
           
-          # 2. Use those extracted values as labels in Loki
+          # 2. Extract service name from pod name (e.g., newscenter-deployment-xxx -> newscenter)
+          - regex:
+              source: pod_name
+              expression: "^(?P<service>[^-]+).*"
+          
+          # 3. Copy service to service_name field (for Grafana drilldown)
+          - template:
+              source: service_name
+              template: '{{ .service }}'
+          
+          # 4. Use extracted values as labels in Loki (including service_name for Grafana drilldown)
           - labels:
               namespace:
               pod_name:
               container_name:
               uid:
+              service:
+              service_name:
+          
+          # 4. Parse JSON logs if they exist
+          - json:
+              expressions:
+                level: level
+                event: event
+                method: method
+                path: path
+                status_code: status_code
+                process_time: process_time
+                logger: logger
+                request_id: request_id
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  labels:
+    app: promtail
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+    spec:
+      serviceAccountName: promtail
+      containers:
+        - name: promtail
+          image: grafana/promtail:2.9.2
+          args:
+            - "-config.file=/etc/promtail/promtail.yaml"
+          ports:
+            - containerPort: 9080
+              name: http-metrics
+          volumeMounts:
+            - name: config
+              mountPath: /etc/promtail
+            - name: positions
+              mountPath: /run/promtail
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: promtail-config
+        - name: positions
+          hostPath:
+            path: /tmp/promtail-positions
+            type: DirectoryOrCreate
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  labels:
+    app: promtail

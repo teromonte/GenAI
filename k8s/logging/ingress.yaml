@@ -6,6 +6,11 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - grafana.247newsbot.monteiro.dev.br
+      secretName: grafana-monteiro-dev-br-tls
   rules:
     - host: grafana.247newsbot.monteiro.dev.br
       http:

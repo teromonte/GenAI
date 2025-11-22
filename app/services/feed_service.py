@@ -1,44 +1,20 @@
-import feedparser
-from sqlalchemy.orm import Session
-from datetime import datetime, timezone
 import structlog
 from typing import List
+from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 
 from app.db.models import Feed, Article
-from app.db.vector_store import get_retriever, get_embedding_function
-# We might need a way to ADD documents to the vector store. 
-# The current vector_store.py only returns a retriever.
-# We'll need to instantiate Chroma directly or add a helper to add documents.
-from langchain_chroma import Chroma
+from app.services.rss_fetcher import RSSFetcher
+from app.services.vector_service import VectorService
 from langchain_core.documents import Document
-from app.core.config import settings
 
 logger = structlog.get_logger()
 
 class FeedService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, rss_fetcher: RSSFetcher = None, vector_service: VectorService = None):
         self.db = db
-        self.embedding_function = get_embedding_function()
-        # Initialize Chroma for writing
-        self.vector_db = Chroma(
-            collection_name="articles", # Dynamic collection for all articles
-            persist_directory=settings.CHROMA_PATH,
-            embedding_function=self.embedding_function,
-        )
-
-    def fetch_and_parse_feed(self, feed_url: str) -> List[dict]:
-        """
-        Fetches and parses an RSS feed using feedparser.
-        """
-        try:
-            feed = feedparser.parse(feed_url)
-            if feed.bozo:
-                logger.warning("feed_parse_warning", url=feed_url, error=feed.bozo_exception)
-            
-            return feed.entries
-        except Exception as e:
-            logger.error("feed_fetch_error", url=feed_url, error=str(e))
-            return []
+        self.rss_fetcher = rss_fetcher or RSSFetcher()
+        self.vector_service = vector_service or VectorService()
 
     def update_feed_articles(self, feed_id: int) -> int:
         """
@@ -49,7 +25,7 @@ class FeedService:
         if not feed:
             raise ValueError(f"Feed with id {feed_id} not found")
 
-        entries = self.fetch_and_parse_feed(feed.url)
+        entries = self.rss_fetcher.fetch(feed.url)
         new_articles_count = 0
         documents_to_embed = []
 
@@ -92,7 +68,7 @@ class FeedService:
             documents_to_embed.append(doc)
 
         if documents_to_embed:
-            self.vector_db.add_documents(documents_to_embed)
+            self.vector_service.add_documents(documents_to_embed)
             logger.info("articles_embedded", count=len(documents_to_embed), feed=feed.name)
 
         feed.last_fetched = datetime.now(timezone.utc)

@@ -1,21 +1,20 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-from langchain_core.output_parsers import StrOutputParser
 from langchain_groq import ChatGroq
 from langsmith import traceable
-from app.db.vector_store import get_retriever
 from app.core.config import settings
+from app.services.vector_service import VectorService
+from functools import lru_cache
 
 class RAGService:
-    def __init__(self):
+    def __init__(self, vector_service: VectorService = None):
         # 1. Initialize the LLM
         self.llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
-        # 2. Get retriever for the dynamic articles collection
-        self.articles_retriever = get_retriever("articles")
+        # 2. Get retriever from VectorService
+        self.vector_service = vector_service or VectorService()
+        self.articles_retriever = self.vector_service.get_retriever()
 
         # 3. Load prompts from config
         prompts = settings.get_prompts()
@@ -67,9 +66,6 @@ class RAGService:
         Generates a new article based on the topic and optional category.
         """
         # 1. Retrieve relevant articles
-        # Note: Chroma retriever doesn't easily support dynamic metadata filtering via invoke param 
-        # without using the underlying vector store directly. 
-        # For now, we'll retrieve based on topic.
         docs = await self.articles_retriever.ainvoke(topic)
         
         # 2. Generate Article
@@ -86,8 +82,6 @@ class RAGService:
         
         chain = article_prompt | self.llm | StrOutputParser()
         return await chain.ainvoke({"topic": topic, "context": docs})
-
-from functools import lru_cache
 
 @lru_cache()
 def get_rag_service() -> RAGService:
